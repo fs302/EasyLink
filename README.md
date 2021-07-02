@@ -1,10 +1,18 @@
 # EasyLink
 
-EasyLink is an Easy-to-use collection of SOTA Link Prediction models on Networks, especially Social Network. It is designed to provide tutorials for beginers, modular implementation on models and comprehensive guidance for choosing the right model.
+EasyLink is an **Easy-to-use** collection of SOTA Link Prediction models for Networks, especially Social Networks. It is designed to provide tutorials for beginers, pipeline implementation of models and comprehensive guidance for choosing the right model.
+
+## Requirements
+* Python 3.6.2
+* PyTorch 1.7.1
+* PyTorch_Geometric 1.6.3
+* OGB 1.3.1
+* tqdm 4.36.1
 
 ## Models
 | Model               | Paper                                                        | Module |
 | ------------------- | ------------------------------------------------------------ | ------ |
+| Common Neighbors | [2003] [The Link Prediction Problem for Social Networks](https://dl.acm.org/doi/pdf/10.1145/956863.956972) |        |
 | Adamic Adar         | [2003] [Friends and neighbors on the Web](http://social.cs.uiuc.edu/class/cs591kgk/friendsadamic.pdf) |        |
 | Local Path Index    | [2009] [Similarity index based on local paths for link prediction of complex networks](https://journals.aps.org/pre/pdf/10.1103/PhysRevE.80.046122) |        |
 | Resource Allocation | [2009] [Predicting missing links via local information](https://arxiv.org/pdf/0901.0553.pdf) |        |
