@@ -1,6 +1,7 @@
 
 from ogb.linkproppred import PygLinkPropPredDataset, Evaluator
 
+
 def evaluate_hits(evaluator, pos_val_pred, neg_val_pred, pos_test_pred, neg_test_pred):
     results = {}
     for K in [20, 50, 100]:
@@ -17,6 +18,7 @@ def evaluate_hits(evaluator, pos_val_pred, neg_val_pred, pos_test_pred, neg_test
         results[f'Hits@{K}'] = (valid_hits, test_hits)
 
     return results
+
 
 def evaluate_auc(val_pred, val_true, test_pred, test_true):
     from sklearn.metrics import roc_auc_score

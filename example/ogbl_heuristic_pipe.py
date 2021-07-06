@@ -26,13 +26,13 @@ def main():
     parser = argparse.ArgumentParser(description='OGBL (SEAL)')
     parser.add_argument('--dataset', type=str, default='ogbl-collab', help='choose: ogbl-ppa, ogbl_collab, ogbl-ddi')
     parser.add_argument('--model', type=str, default='adamic_adar', help="choose: common_neighbors, adamic_adar, resource_allocation, local_path_index")   
-    parser.add_argument('--test', type=int, default=0, help="sample small number of data to run pipeline.")    
+    parser.add_argument('--test', type=int, default=1, help="sample small number of data to run pipeline.")    
 
     args = parser.parse_args()
 
     print("Loading data.")
     dataset_name = args.dataset
-    dataset = PygLinkPropPredDataset(name=dataset_name)
+    dataset = PygLinkPropPredDataset(name=dataset_name, root='../data/')
     evaluator = Evaluator(name=dataset_name)
     data = dataset[0]
     split_edge = dataset.get_edge_split()
@@ -64,11 +64,23 @@ def main():
         
     model_predictor = eval(args.model) # use model_name as function
     print("Model: {}".format(args.model))
-    pos_valid_pred = model_predictor(A, pos_valid_edge, batch_size)
-    neg_valid_pred = model_predictor(A, neg_valid_edge, batch_size)
-    pos_test_pred = model_predictor(A, pos_test_edge, batch_size)
-    neg_test_pred = model_predictor(A, neg_test_edge, batch_size)
+    pos_valid_pred = model_predictor(A, pos_valid_edge, batch_size=batch_size)
+    neg_valid_pred = model_predictor(A, neg_valid_edge, batch_size=batch_size)
     
+    if dataset_name == 'ogbl_collab':
+        # adding valid data when predict testing
+        train_valid_edges_raw = np.concatenate((np.array(split_edge['train']['edge']),np.array(split_edge['valid']['edge'])))
+        train_valid_edges_reverse = np.array([train_valid_edges_raw[:,1], train_valid_edges_raw[:,0]]).transpose()
+        train_valid_edges = np.concatenate([train_valid_edges_raw, train_valid_edges_reverse], axis=0)
+        train_valid_edge_weight = torch.ones(train_valid_edges.shape[0], dtype=int)
+        A2 = ssp.csr_matrix(
+            (train_valid_edge_weight, (train_valid_edges[:,0], train_valid_edges[:,1])), shape = (data.num_nodes, data.num_nodes)
+        )
+        pos_test_pred = model_predictor(A2, pos_test_edge)
+        neg_test_pred = model_predictor(A2, neg_test_edge)
+    else:
+        pos_test_pred = model_predictor(A, pos_test_edge)
+        neg_test_pred = model_predictor(A, neg_test_edge)
     
     eval_res = evaluate_hits(evaluator, pos_valid_pred, neg_valid_pred, pos_test_pred, neg_test_pred)
 
