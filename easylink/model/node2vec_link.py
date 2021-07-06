@@ -96,6 +96,7 @@ if __name__ == '__main__':
     
     print("Training Node2vec embedding.")
     emb_path = 'n2v_emb/test.pt'
-    n2v = Node2VecLinkPredictor(data.edge_index, emb_path)
+    n2v_params = {"epochs": 5}
+    n2v = Node2VecLinkPredictor(data.edge_index, emb_path, n2v_params)
     n2v.train_node2vec()
 
