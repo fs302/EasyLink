@@ -52,7 +52,7 @@ def adamic_adar(adj_matrix, link_list, batch_size=32768):
 
 def resource_allocation(adj_matrix, link_list, batch_size=32768):
     '''
-    cite: [Similarity index based on local paths for link prediction of complex networks](https://journals.aps.org/pre/pdf/10.1103/PhysRevE.80.046122)
+    cite: [Predicting missing links via local information](https://arxiv.org/pdf/0901.0553.pdf) 
     :param adj_matrix: Compressed Sparse Row matrix
     :param link_list: torch tensor list of links, shape[m, 2]
     :return: RA similarity for each link
