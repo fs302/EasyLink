@@ -81,7 +81,7 @@ class Node2VecLinkPredictor():
         self.embedding = model.embedding.weight.data.cpu()
         return model
 
-    def train_link_predictor(self):
+    def train_link_predictor(self, hidden_channels, num_layers, dropout=True):
         pass
 
     def predict(self, link_list):
