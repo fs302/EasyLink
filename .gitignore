@@ -2,6 +2,7 @@
 
 # Download dataset
 example/dataset/
+data/ogbl_collab/
 
 # Develop file
 example/ogbl_collab.ipynb
@@ -10,6 +11,7 @@ example/ogbl_collab.ipynb
 __pycache__/
 *.py[cod]
 *$py.class
+*.py.swp
 
 # C extensions
 *.so
@@ -117,7 +119,7 @@ venv/
 ENV/
 env.bak/
 venv.bak/
-.vscode/*
+.vscode/
 
 # Spyder project settings
 .spyderproject
