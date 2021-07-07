@@ -1,11 +1,24 @@
+import os, sys
+import argparse
 import torch
+import torch.nn.functional as F
+from torch.utils.data import DataLoader
+import numpy as np
 from torch_geometric.nn import Node2Vec
-
 from ogb.linkproppred import PygLinkPropPredDataset, Evaluator
+from tqdm import tqdm
+
+parent_path = os.path.dirname(os.path.dirname(sys.path[0]))
+if parent_path not in sys.path:
+    sys.path.append(parent_path)
+from easylink.common.eval_utils import evaluate_hits, evaluate_auc
 
 class Node2VecLinkPredictor():
     """ Link Prediction via Node2vec Node
     cite: [node2vec: Scalable Feature Learning for Networks](https://cs.stanford.edu/~jure/pubs/node2vec-kdd16.pdf)
+
+    This module will project node into embedding based on graph structure
+     and train an nn model for node-pair embedding product based on training sample.
 
     Returns:
         [type]: [description]
@@ -44,14 +57,17 @@ class Node2VecLinkPredictor():
         if loading_pretrain:
             self.load_embedding(self.emb_path)
 
+        self.predictor = None
+
     def load_embedding(self, emb_path):
+        print("Loading embedding.")
         self.embedding = torch.load(emb_path, map_location='cpu')
 
     def save_embedding(self, model, emb_path):
         torch.save(model.embedding.weight.data.cpu(), emb_path)
 
     def train_node2vec(self):
-
+        print("Training Node2vec embedding.")
         device = f'cuda:{self.device}' if torch.cuda.is_available() else 'cpu'
         device = torch.device(device)
 
@@ -74,29 +90,140 @@ class Node2VecLinkPredictor():
                 # TODO:log
                 if (i + 1) % log_steps == 0:
                     print(f'Epoch: {epoch:02d}, Step: {i+1:03d}/{len(loader)}, '
-                        f'Loss: {loss:.4f}')
+                          f'Loss: {loss:.4f}')
 
             self.save_embedding(model, self.emb_path)
-        
+
         self.embedding = model.embedding.weight.data.cpu()
         return model
 
-    def train_link_predictor(self, hidden_channels, num_layers, dropout=True, batch_size=1024):
-        pass
+    def train_link_predictor(self, pos_edges, hidden_channels, num_layers, dropout=True, epochs=10, batch_size=1024, run_validation=False):
+        print("Training Link Predictor.")
+        device = f'cuda:{self.device}' if torch.cuda.is_available() else 'cpu'
+        device = torch.device(device)
 
-    def predict(self, link_list):
-        pass
+        x = self.embedding.to(device)
+        pos_edges = pos_edges.to(device)
+
+        predictor = LinkNN(x.size(-1), hidden_channels, 1,
+                           num_layers, dropout).to(device)
+
+        
+        predictor.reset_parameters()
+        lr = 0.001
+        optimizer = torch.optim.Adam(predictor.parameters(), lr=lr)
+        for epoch in range(1, epochs + 1):
+            predictor.train()
+            total_loss = 0
+            data_loader = DataLoader(
+                range(pos_edges.size(0)), batch_size, shuffle=True)
+            pbar = tqdm(data_loader)
+            for perm in pbar:
+                optimizer.zero_grad()
+                edge = pos_edges[perm].t()
+                pos_out = predictor(x[edge[0]], x[edge[1]])
+                pos_loss = -torch.log(pos_out + 1e-15).mean()
+
+                edge = torch.randint(
+                    0, x.size(0), edge.size(), dtype=torch.long, device=x.device)
+                neg_out = predictor(x[edge[0]], x[edge[1]])
+                neg_loss = -torch.log(1 - neg_out + 1e-15).mean()
+
+                loss = pos_loss + neg_loss
+                loss.backward()
+                optimizer.step()
+                avg_loss = np.round(loss.item(),6)
+                pbar.set_description(
+                    "epoch:{epoch}, loss:{avg_loss}".format(**locals()))
+            if run_validation:
+                predictor.eval()
+
+                pos_valid_edge = split_edge['valid']['edge'].to(x.device)
+                neg_valid_edge = split_edge['valid']['edge_neg'].to(x.device)
+                pos_test_edge = split_edge['test']['edge'].to(x.device)
+                neg_test_edge = split_edge['test']['edge_neg'].to(x.device)
+
+                pos_valid_pred = self.predict(x, pos_valid_edge, batch_size, predictor)
+                neg_valid_pred = self.predict(x, neg_valid_edge, batch_size, predictor)
+                pos_test_pred = self.predict(x, pos_test_edge, batch_size, predictor)
+                neg_test_pred = self.predict(x, neg_test_edge, batch_size, predictor)
+
+                eval_res = evaluate_hits(evaluator, pos_valid_pred, neg_valid_pred, pos_test_pred, neg_test_pred)
+                for key, result in eval_res.items():
+                    valid_hits, test_hits = result
+                    print(key)
+                    print(
+                        f'Valid: {100 * valid_hits:.2f}%, '
+                        f'Test: {100 * test_hits:.2f}%')
+        predictor.eval()
+        self.predictor = predictor
+        return predictor
+
+    def predict(self, x, link_list, batch_size=1024, predictor=None):
+        preds = []
+        if predictor is None:
+            predictor = self.predictor
+        predictor.eval()
+        for perm in DataLoader(range(link_list.size(0)), batch_size):
+            edge = link_list[perm].t()
+            preds += [predictor(x[edge[0]], x[edge[1]]).squeeze().cpu()]
+        pred = torch.cat(preds, dim=0)
+        return pred
+
+class LinkNN(torch.nn.Module):
+    def __init__(self, in_channels, hidden_channels, out_channels, num_layers, dropout):
+        super(LinkNN, self).__init__()
+        self.layers = torch.nn.ModuleList()
+        self.layers.append(torch.nn.Linear(in_channels, hidden_channels))
+        for _ in range(num_layers-2):
+            self.layers.append(torch.nn.Linear(
+                hidden_channels, hidden_channels))
+        self.layers.append(torch.nn.Linear(hidden_channels, out_channels))
+        self.dropout = dropout
+
+    def reset_parameters(self):
+        for layer in self.layers:
+            layer.reset_parameters()
+
+    def forward(self, x_i, x_j):
+        x = x_i * x_j
+        for layer in self.layers[:-1]:
+            x = layer(x)
+            x = F.relu(x)
+            x = F.dropout(x, p=self.dropout, training=self.training)
+        x = self.layers[-1](x)
+        return torch.sigmoid(x)
 
 
 if __name__ == '__main__':
+
+    parser = argparse.ArgumentParser(description='Node2Vec LinkPredictor')
+    parser.add_argument('--device', type=int, default=0)
+    parser.add_argument('--log_steps', type=int, default=1)
+    parser.add_argument('--use_node_embedding', action='store_true')
+    parser.add_argument('--num_layers', type=int, default=3)
+    parser.add_argument('--hidden_channels', type=int, default=256)
+    parser.add_argument('--dropout', type=float, default=0.0)
+    parser.add_argument('--batch_size', type=int, default=64 * 1024)
+    parser.add_argument('--lr', type=float, default=0.01)
+    parser.add_argument('--epochs', type=int, default=50)
+    args = parser.parse_args()
+    print(args)
     # test
     print("Loading data.")
-    dataset = PygLinkPropPredDataset(name='ogbl-collab', root='/home/admin/workspace/project/EasyLink/data')
+    dataset_name = 'ogbl-collab'
+    dataset = PygLinkPropPredDataset(
+        name=dataset_name, root='/home/admin/workspace/project/EasyLink/data')
     data = dataset[0]
-    
-    print("Training Node2vec embedding.")
+
     emb_path = 'n2v_emb/test.pt'
-    n2v_params = {"epochs": 10}
-    n2v = Node2VecLinkPredictor(data.edge_index, emb_path, n2v_params)
+    n2v_params = {"embedding_dim":64, "epochs": 10}
+    n2v = Node2VecLinkPredictor(
+        data.edge_index, emb_path, n2v_params, loading_pretrain=False)
     n2v.train_node2vec()
 
+    split_edge = dataset.get_edge_split()
+    pos_edges = split_edge['train']['edge']
+    evaluator = Evaluator(dataset_name)
+    n2v.train_link_predictor(pos_edges, args.hidden_channels,
+                             args.num_layers, args.dropout, args.epochs, args.batch_size, run_validation=True)
