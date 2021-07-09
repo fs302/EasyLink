@@ -33,6 +33,9 @@ class Node2VecLinkPredictor():
                               'walk_length': 40,
                               'context_size': 20,
                               'walks_per_node': 10,
+                              'p': 1.0,
+                              'q': 1.0,
+                              'num_negative_samples': 10,
                               'batch_size': 256,
                               'num_workers': 4,
                               'lr': 1e-3,
@@ -52,6 +55,9 @@ class Node2VecLinkPredictor():
         self.n2v_num_workers = n2v_params['num_workers']
         self.n2v_lr = n2v_params['lr']
         self.n2v_epochs = n2v_params['epochs']
+        self.p = n2v_params['p']
+        self.q = n2v_params['q']
+        self.num_negative_samples = n2v_params['num_negative_samples']
 
         self.embedding = None
         if loading_pretrain:
@@ -71,8 +77,9 @@ class Node2VecLinkPredictor():
         device = f'cuda:{self.device}' if torch.cuda.is_available() else 'cpu'
         device = torch.device(device)
 
-        model = Node2Vec(self.edge_index, self.embedding_dim, self.walk_length,
-                         self.context_size, self.walks_per_node, sparse=True).to(device)
+        model = Node2Vec(self.edge_index, self.embedding_dim, self.walk_length, 
+                         self.context_size, self.walks_per_node, self.p, self.q, 
+                         self.num_negative_samples, sparse=True).to(device)
         loader = model.loader(batch_size=self.n2v_batch_size,
                               shuffle=True, num_workers=self.n2v_num_workers)
         optimizer = torch.optim.SparseAdam(
