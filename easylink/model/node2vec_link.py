@@ -179,7 +179,7 @@ if __name__ == '__main__':
     parser.add_argument('--n2v_embedding_dim', type=int, default=64)
     parser.add_argument('--n2v_walk_length', type=int, default=40)
     parser.add_argument('--n2v_context_size', type=int, default=20)
-    parser.add_argument('--n2v_walk_per_node', type=int, default=10)
+    parser.add_argument('--n2v_walks_per_node', type=int, default=10)
     parser.add_argument('--n2v_num_workers', type=int, default=4)
     parser.add_argument('--n2v_batch_size', type=int, default=1024)
     parser.add_argument('--n2v_train_epochs', type=int, default=10)
@@ -199,21 +199,21 @@ if __name__ == '__main__':
         name=dataset_name, root='/home/admin/workspace/project/EasyLink/data')
     data = dataset[0]
 
-    emb_path = 'n2v_emb/test.pt'
+    emb_path = '/home/admin/workspace/project/EasyLink/easylink/model/n2v_emb/test.pt'
     n2v_params = {'embedding_dim': args.n2v_embedding_dim,
                     'walk_length': args.n2v_walk_length,
                     'context_size': args.n2v_context_size,
-                    'walks_per_node': args.walks_per_node,
+                    'walks_per_node': args.n2v_walks_per_node,
                     'batch_size': args.n2v_batch_size,
                     'num_workers': args.n2v_num_workers,
                     'lr': args.n2v_lr,
                     'epochs': args.n2v_train_epochs}
     n2v = Node2VecLinkPredictor(
         data.edge_index, emb_path, n2v_params, loading_pretrain=False)
-    n2v.train_node2vec()
+    n2v.train_node2vec(store_embedding=True)
 
-    split_edge = dataset.get_edge_split()
-    pos_edges = split_edge['train']['edge']
-    evaluator = Evaluator(dataset_name)
-    n2v.train_link_predictor(pos_edges, args.hidden_channels,
-                             args.num_layers, args.dropout, args.epochs, args.batch_size, run_validation=True)
+    # split_edge = dataset.get_edge_split()
+    # pos_edges = split_edge['train']['edge']
+    # evaluator = Evaluator(dataset_name)
+    # n2v.train_link_predictor(pos_edges, args.hidden_channels,
+    #                          args.num_layers, args.dropout, args.epochs, args.batch_size, run_validation=True)
