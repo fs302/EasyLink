@@ -1,7 +1,6 @@
 import os, sys
 import argparse
 import torch
-import torch.nn.functional as F
 from torch.utils.data import DataLoader
 import numpy as np
 from torch_geometric.nn import Node2Vec
@@ -12,6 +11,7 @@ parent_path = os.path.dirname(os.path.dirname(sys.path[0]))
 if parent_path not in sys.path:
     sys.path.append(parent_path)
 from easylink.common.eval_utils import evaluate_hits, evaluate_auc
+from easylink.model.link_nn import LinkNN
 
 class Node2VecLinkPredictor():
     """ Link Prediction via Node2vec Node
@@ -66,7 +66,7 @@ class Node2VecLinkPredictor():
     def save_embedding(self, model, emb_path):
         torch.save(model.embedding.weight.data.cpu(), emb_path)
 
-    def train_node2vec(self):
+    def train_node2vec(self, store_embedding=False):
         print("Training Node2vec embedding.")
         device = f'cuda:{self.device}' if torch.cuda.is_available() else 'cpu'
         device = torch.device(device)
@@ -91,8 +91,8 @@ class Node2VecLinkPredictor():
                 if (i + 1) % log_steps == 0:
                     print(f'Epoch: {epoch:02d}, Step: {i+1:03d}/{len(loader)}, '
                           f'Loss: {loss:.4f}')
-
-            self.save_embedding(model, self.emb_path)
+            if store_embedding:
+                self.save_embedding(model, self.emb_path)
 
         self.embedding = model.embedding.weight.data.cpu()
         return model
@@ -170,37 +170,20 @@ class Node2VecLinkPredictor():
         pred = torch.cat(preds, dim=0)
         return pred
 
-class LinkNN(torch.nn.Module):
-    def __init__(self, in_channels, hidden_channels, out_channels, num_layers, dropout):
-        super(LinkNN, self).__init__()
-        self.layers = torch.nn.ModuleList()
-        self.layers.append(torch.nn.Linear(in_channels, hidden_channels))
-        for _ in range(num_layers-2):
-            self.layers.append(torch.nn.Linear(
-                hidden_channels, hidden_channels))
-        self.layers.append(torch.nn.Linear(hidden_channels, out_channels))
-        self.dropout = dropout
-
-    def reset_parameters(self):
-        for layer in self.layers:
-            layer.reset_parameters()
-
-    def forward(self, x_i, x_j):
-        x = x_i * x_j
-        for layer in self.layers[:-1]:
-            x = layer(x)
-            x = F.relu(x)
-            x = F.dropout(x, p=self.dropout, training=self.training)
-        x = self.layers[-1](x)
-        return torch.sigmoid(x)
-
 
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description='Node2Vec LinkPredictor')
     parser.add_argument('--device', type=int, default=0)
     parser.add_argument('--log_steps', type=int, default=1)
-    parser.add_argument('--use_node_embedding', action='store_true')
+    parser.add_argument('--n2v_embedding_dim', type=int, default=64)
+    parser.add_argument('--n2v_walk_length', type=int, default=40)
+    parser.add_argument('--n2v_context_size', type=int, default=20)
+    parser.add_argument('--n2v_walk_per_node', type=int, default=10)
+    parser.add_argument('--n2v_num_workers', type=int, default=4)
+    parser.add_argument('--n2v_batch_size', type=int, default=1024)
+    parser.add_argument('--n2v_train_epochs', type=int, default=10)
+    parser.add_argument('--n2v_lr', type=float, default=1e-3)
     parser.add_argument('--num_layers', type=int, default=3)
     parser.add_argument('--hidden_channels', type=int, default=256)
     parser.add_argument('--dropout', type=float, default=0.0)
@@ -217,7 +200,14 @@ if __name__ == '__main__':
     data = dataset[0]
 
     emb_path = 'n2v_emb/test.pt'
-    n2v_params = {"embedding_dim":64, "epochs": 10}
+    n2v_params = {'embedding_dim': args.n2v_embedding_dim,
+                    'walk_length': args.n2v_walk_length,
+                    'context_size': args.n2v_context_size,
+                    'walks_per_node': args.walks_per_node,
+                    'batch_size': args.n2v_batch_size,
+                    'num_workers': args.n2v_num_workers,
+                    'lr': args.n2v_lr,
+                    'epochs': args.n2v_train_epochs}
     n2v = Node2VecLinkPredictor(
         data.edge_index, emb_path, n2v_params, loading_pretrain=False)
     n2v.train_node2vec()
