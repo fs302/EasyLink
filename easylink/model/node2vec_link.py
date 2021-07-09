@@ -28,7 +28,7 @@ class Node2VecLinkPredictor():
         self.edge_index = edge_index
         self.emb_path = emb_path
         self.device = 0
-
+        self.total_params = 0
         default_n2v_params = {'embedding_dim': 128,
                               'walk_length': 40,
                               'context_size': 20,
@@ -84,7 +84,11 @@ class Node2VecLinkPredictor():
                               shuffle=True, num_workers=self.n2v_num_workers)
         optimizer = torch.optim.SparseAdam(
             list(model.parameters()), lr=self.n2v_lr)
-
+        
+        parameters = list(model.parameters())
+        n2v_params = sum(p.numel() for param in parameters for p in param)
+        self.total_params += n2v_params
+        
         model.train()
         log_steps = 10
         for epoch in range(1, self.n2v_epochs + 1):
@@ -115,6 +119,9 @@ class Node2VecLinkPredictor():
         predictor = LinkNN(x.size(-1), hidden_channels, 1,
                            num_layers, dropout).to(device)
 
+        parameters = list(predictor.parameters())
+        predictor_params = sum(p.numel() for param in parameters for p in param)
+        self.total_params += predictor_params
         
         predictor.reset_parameters()
         lr = 0.001
@@ -183,6 +190,8 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Node2Vec LinkPredictor')
     parser.add_argument('--device', type=int, default=0)
     parser.add_argument('--log_steps', type=int, default=1)
+    parser.add_argument('--train_n2v', type=int, default=1)
+    parser.add_argument('--n2v_emb_path', type=str, default='/home/admin/workspace/project/EasyLink/easylink/model/n2v_emb/test.pt')
     parser.add_argument('--n2v_embedding_dim', type=int, default=64)
     parser.add_argument('--n2v_walk_length', type=int, default=40)
     parser.add_argument('--n2v_context_size', type=int, default=20)
@@ -206,7 +215,6 @@ if __name__ == '__main__':
         name=dataset_name, root='/home/admin/workspace/project/EasyLink/data')
     data = dataset[0]
 
-    emb_path = '/home/admin/workspace/project/EasyLink/easylink/model/n2v_emb/test.pt'
     n2v_params = {'embedding_dim': args.n2v_embedding_dim,
                     'walk_length': args.n2v_walk_length,
                     'context_size': args.n2v_context_size,
@@ -215,13 +223,19 @@ if __name__ == '__main__':
                     'num_workers': args.n2v_num_workers,
                     'lr': args.n2v_lr,
                     'epochs': args.n2v_train_epochs}
-    
-    n2v = Node2VecLinkPredictor(
-        data.edge_index, emb_path, n2v_params, loading_pretrain=True)
-    # n2v.train_node2vec(store_embedding=True)
+    if args.train_n2v == 1:
+        n2v = Node2VecLinkPredictor(
+            data.edge_index, args.n2v_emb_path, n2v_params, loading_pretrain=False)
+        n2v.train_node2vec(store_embedding=True)
+    else:
+        n2v = Node2VecLinkPredictor(
+            data.edge_index, args.n2v_emb_path, n2v_params, loading_pretrain=True)
 
     split_edge = dataset.get_edge_split()
     pos_edges = split_edge['train']['edge']
     evaluator = Evaluator(dataset_name)
     n2v.train_link_predictor(pos_edges, args.hidden_channels,
                              args.num_layers, args.dropout, args.epochs, args.batch_size, run_validation=True)
+
+    
+    print(f'Total number of parameters is {n2v.total_params}')
