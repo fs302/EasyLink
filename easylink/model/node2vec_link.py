@@ -215,12 +215,13 @@ if __name__ == '__main__':
                     'num_workers': args.n2v_num_workers,
                     'lr': args.n2v_lr,
                     'epochs': args.n2v_train_epochs}
+    
     n2v = Node2VecLinkPredictor(
-        data.edge_index, emb_path, n2v_params, loading_pretrain=False)
-    n2v.train_node2vec(store_embedding=True)
+        data.edge_index, emb_path, n2v_params, loading_pretrain=True)
+    # n2v.train_node2vec(store_embedding=True)
 
-    # split_edge = dataset.get_edge_split()
-    # pos_edges = split_edge['train']['edge']
-    # evaluator = Evaluator(dataset_name)
-    # n2v.train_link_predictor(pos_edges, args.hidden_channels,
-    #                          args.num_layers, args.dropout, args.epochs, args.batch_size, run_validation=True)
+    split_edge = dataset.get_edge_split()
+    pos_edges = split_edge['train']['edge']
+    evaluator = Evaluator(dataset_name)
+    n2v.train_link_predictor(pos_edges, args.hidden_channels,
+                             args.num_layers, args.dropout, args.epochs, args.batch_size, run_validation=True)
