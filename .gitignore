@@ -3,9 +3,11 @@
 # Download dataset
 example/dataset/
 data/ogbl_collab/
+data/ogbl_*
 
 # Develop file
 example/ogbl_collab.ipynb
+easylink/model/n2v_emb/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
