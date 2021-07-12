@@ -130,7 +130,7 @@ class Node2VecLinkPredictor():
                 edge = pos_edges[perm].t()
                 pos_out = predictor(x[edge[0]], x[edge[1]])
                 pos_loss = -torch.log(pos_out + 1e-15).mean()
-
+                # can be improved
                 edge = torch.randint(
                     0, x.size(0), edge.size(), dtype=torch.long, device=x.device)
                 neg_out = predictor(x[edge[0]], x[edge[1]])
