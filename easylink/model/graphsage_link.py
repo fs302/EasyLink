@@ -7,6 +7,7 @@ from torch_sparse import SparseTensor
 from torch.utils.data import DataLoader
 import numpy as np
 from torch_geometric.nn import SAGEConv
+import torch_geometric.transforms as T
 from ogb.linkproppred import PygLinkPropPredDataset, Evaluator
 from tqdm import tqdm
 
@@ -22,7 +23,7 @@ class GraphSageLinkPredictor():
 
     """
 
-    def __init__(self, num_nodes, node_features, adj, args):
+    def __init__(self, num_nodes, node_features, adj, args, auto_train=False, split_edge=None):
         self.device = f'cuda:{args.device}' if torch.cuda.is_available(
         ) else 'cpu'
         self.device = torch.device(self.device)
@@ -30,10 +31,11 @@ class GraphSageLinkPredictor():
         self.num_nodes = num_nodes
         self.node_features = node_features.to(self.device)
         self.adj = adj.to(self.device)
-        sage_params = {'input_dim': 128,
-                       'hidden_channels': 256,
-                       'out_dim': 128,
-                       'num_layers': 2}
+        sage_params = {'input_dim': self.node_features.shape[-1],
+                       'hidden_channels': args.hidden_channels,
+                       'out_dim': args.hidden_channels,
+                       'num_layers': args.num_layers,
+                       'dropout':args.dropout}
         link_params = {'hidden_channels': args.hidden_channels,
                        'out_channels': 1,
                        'num_layers': args.num_layers,
@@ -41,7 +43,8 @@ class GraphSageLinkPredictor():
         self.model = SAGE(sage_params['input_dim'],
                           sage_params['hidden_channels'],
                           sage_params['out_dim'],
-                          sage_params['num_layers']
+                          sage_params['num_layers'],
+                          sage_params['dropout']
                           ).to(self.device)
         self.link_predictor = LinkNN(sage_params['out_dim'],
                                      link_params['hidden_channels'],
@@ -49,8 +52,17 @@ class GraphSageLinkPredictor():
                                      link_params['num_layers'],
                                      link_params['dropout']
                                      ).to(self.device)
+        p1 = list(self.model.parameters())
+        sage_params = sum(p.numel() for param in p1 for p in param)
+        p2 = list(self.link_predictor.parameters())
+        predictor_params = sum(p.numel() for param in p2 for p in param)
+        self.total_params = sage_params + predictor_params
+        
+        if auto_train and split_edge is not None:
+            train_edge = split_edge['train']['edge']
+            self.train(train_edge, args.lr, args.batch_size, run_validation=False, split_edge=split_edge)
 
-    def train(self, pos_edges, lr=0.001, epochs=10, batch_size=1024, run_validation=False):
+    def train(self, pos_edges, lr=0.001, epochs=10, batch_size=1024, neg_sample_num=10, run_validation=False, split_edge=None):
         print("Training Sage Link Predictor.")
         model = self.model
         link_predictor = self.link_predictor
@@ -69,7 +81,7 @@ class GraphSageLinkPredictor():
             data_loader = DataLoader(
                 range(pos_train_edges.size(0)), batch_size, shuffle=True)
             pbar = tqdm(data_loader)
-            
+            total_loss = total_examples = 0
             for perm in pbar:
                 optimizer.zero_grad()
                 edge = pos_train_edges[perm].t()
@@ -78,7 +90,7 @@ class GraphSageLinkPredictor():
                 pos_loss = -torch.log(pos_out + 1e-15).mean()
                 # can be improved
                 edge = torch.randint(
-                    0, self.num_nodes, edge.size(), dtype=torch.long, device=self.device)
+                    0, self.num_nodes, (edge.size()[0], edge.size()[1]*neg_sample_num), dtype=torch.long, device=self.device)
                 neg_out = link_predictor(h[edge[0]], h[edge[1]])
                 neg_loss = -torch.log(1 - neg_out + 1e-15).mean()
 
@@ -92,13 +104,17 @@ class GraphSageLinkPredictor():
                 avg_loss = np.round(loss.item(), 6)
                 pbar.set_description(
                     "epoch:{epoch}, loss:{avg_loss}".format(**locals()))
+                num_examples = pos_out.size(0)
+                total_loss += loss.item() * num_examples
+                total_examples += num_examples
                 del h, pos_out, neg_out, pos_loss, neg_loss
-                
+            total_avg_loss = np.round(total_loss / total_examples, 6)
+            # print("epoch:{epoch}, average loss:{total_avg_loss}".format(**locals()))
             if run_validation:
-                self.validation(batch_size)
+                self.validation(split_edge, batch_size)
 
-    
-    def validation(self, batch_size=1024):
+    @torch.no_grad()
+    def validation(self, split_edge, batch_size=1024):
         pos_valid_edge = split_edge['valid']['edge'].to(self.device)
         neg_valid_edge = split_edge['valid']['edge_neg'].to(
             self.device)
@@ -119,7 +135,7 @@ class GraphSageLinkPredictor():
                 f'Valid: {100 * valid_hits:.2f}%, '
                 f'Test: {100 * test_hits:.2f}%')
 
-
+    @torch.no_grad()
     def predict(self, link_list, batch_size=1024):
         self.model.eval()
         self.link_predictor.eval()
@@ -135,7 +151,7 @@ class GraphSageLinkPredictor():
 
 
 class SAGE(torch.nn.Module):
-    def __init__(self, in_channels, hidden_channels, out_channels, num_layers, dropout=True):
+    def __init__(self, in_channels, hidden_channels, out_channels, num_layers, dropout):
         super(SAGE, self).__init__()
 
         self.convs = torch.nn.ModuleList()
@@ -161,12 +177,12 @@ class SAGE(torch.nn.Module):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='GraphSage LinkPredictor')
     parser.add_argument('--device', type=int, default=0)
-    parser.add_argument('--log_steps', type=int, default=1)
+    parser.add_argument('--neg_sample_num', type=int, default=1)
     parser.add_argument('--num_layers', type=int, default=3)
     parser.add_argument('--hidden_channels', type=int, default=256)
     parser.add_argument('--dropout', type=float, default=0.0)
-    parser.add_argument('--batch_size', type=int, default=64 * 1024)
-    parser.add_argument('--lr', type=float, default=0.01)
+    parser.add_argument('--batch_size', type=int, default=8 * 1024)
+    parser.add_argument('--lr', type=float, default=0.001)
     parser.add_argument('--epochs', type=int, default=50)
     args = parser.parse_args()
     print(args)
@@ -176,21 +192,23 @@ if __name__ == '__main__':
     dataset = PygLinkPropPredDataset(
         name=dataset_name, root='/home/admin/workspace/project/EasyLink/data')
     data = dataset[0]
-    split_edge = dataset.get_edge_split()
-    edge_index = split_edge['train']['edge'].t()
-    adj_t = SparseTensor.from_edge_index(edge_index).t().to_symmetric()
+    data = T.ToSparseTensor()(data) # make adj_t
 
     graphsage_linkpredictor = GraphSageLinkPredictor(
         data.num_nodes,
         data.x,
-        adj_t,
+        data.adj_t,
         args
     )
-
+    print(f'Total number of parameters is {graphsage_linkpredictor.total_params}')
     evaluator = Evaluator(dataset_name)
-    graphsage_linkpredictor.train(edge_index,
+    split_edge = dataset.get_edge_split()
+    train_edges = split_edge['train']['edge']
+    graphsage_linkpredictor.train(train_edges,
                                   args.lr,
                                   args.epochs,
                                   args.batch_size,
-                                  run_validation=True
+                                  args.neg_sample_num,
+                                  run_validation=True,
+                                  split_edge=split_edge
                                   )
