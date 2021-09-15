@@ -1,0 +1,8 @@
+torch
+torch-scatter
+torch-sparse
+torch-spline-conv
+torchvision
+tqdm
+torch-geometric
+ogb
