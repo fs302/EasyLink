@@ -23,7 +23,7 @@ from easylink.common.eval_utils import evaluate_hits, evaluate_auc
 
 def main():
     # Data settings
-    parser = argparse.ArgumentParser(description='OGBL (SEAL)')
+    parser = argparse.ArgumentParser(description='heuristics')
     parser.add_argument('--dataset', type=str, default='ogbl-collab', help='choose: ogbl-ppa, ogbl_collab, ogbl-ddi')
     parser.add_argument('--model', type=str, default='adamic_adar', help="choose: common_neighbors, adamic_adar, resource_allocation, local_path_index")   
     parser.add_argument('--test', type=int, default=1, help="sample small number of data to run pipeline.")    

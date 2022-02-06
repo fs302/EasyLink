@@ -4,6 +4,7 @@
 example/dataset/
 data/ogbl_collab/
 data/ogbl_*
+data/*seal*/
 
 # Develop file
 example/ogbl_collab.ipynb
