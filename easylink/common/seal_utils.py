@@ -96,7 +96,7 @@ def drnl_node_labeling(adj, src, dst):
     dist2dst = torch.from_numpy(dist2dst)
 
     dist = dist2src + dist2dst
-    dist_over_2, dist_mod_2 = dist // 2, dist % 2
+    dist_over_2, dist_mod_2 = torch.div(dist, 2,rounding_mode='floor'), dist % 2
 
     z = 1 + torch.min(dist2src, dist2dst)
     z += dist_over_2 * (dist_over_2 + dist_mod_2 - 1)
