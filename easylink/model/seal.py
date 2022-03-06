@@ -30,11 +30,11 @@ class SEAL():
         Code partially refer to [SEAL_OGB](https://github.com/facebookresearch/SEAL_OGB)
 
     '''
-    def __init__(self, gnn, use_feature, learning_rate, hidden_channels, num_layers, max_z, dropout):
+    def __init__(self, gnn, use_feature, learning_rate, input_channels, hidden_channels, num_layers, max_z, dropout):
         self.model = None
-        self.use_feature =use_feature
+        self.use_feature = use_feature
         if gnn == 'SAGE':
-            self.model = SAGE(hidden_channels, num_layers, max_z, dropout)
+            self.model = SAGE(input_channels, hidden_channels, num_layers, max_z, dropout)
         parameters = list(self.model.parameters())
         total_params = sum(p.numel() for param in parameters for p in param)
         print(f'Total number of parameters is {total_params}')
@@ -100,7 +100,6 @@ class SEALDataset(InMemoryDataset):
         return [name]
 
     def process(self):
-        print("Processing dataset.")
         pos_edge, neg_edge = get_pos_neg_edges(self.pos_edge_index, self.num_nodes, self.neg_edge_index)
         edge_weight = torch.ones(self.edge_index.size(1), dtype=int)
         A = ssp.csr_matrix(
