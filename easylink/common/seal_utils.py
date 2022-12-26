@@ -141,13 +141,13 @@ def neighbors(fringe, A, outgoing=True):
     return res
 
 class SAGE(torch.nn.Module):
-    def __init__(self, hidden_channels, num_layers, max_z, dropout=0.5):
+    def __init__(self, input_channels, hidden_channels, num_layers, max_z, dropout=0.5):
         super(SAGE, self).__init__()
         self.max_z = max_z
         self.z_embedding = Embedding(self.max_z, hidden_channels)
 
         self.convs = ModuleList()
-        initial_channels = hidden_channels
+        initial_channels = input_channels
         self.convs.append(SAGEConv(initial_channels, hidden_channels))
         for _ in range(num_layers - 1):
             self.convs.append(SAGEConv(hidden_channels, hidden_channels))

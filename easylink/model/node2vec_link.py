@@ -11,7 +11,7 @@ parent_path = os.path.dirname(os.path.dirname(sys.path[0]))
 if parent_path not in sys.path:
     sys.path.append(parent_path)
 from easylink.common.eval_utils import evaluate_hits, evaluate_auc
-from easylink.model.link_nn import LinkNN
+from easylink.common.link_nn import LinkNN
 
 class Node2VecLinkPredictor():
     """ Link Prediction via Node2vec Node

@@ -76,6 +76,7 @@ if __name__ == '__main__':
     # Training settings
     parser.add_argument('--lr', type=float, default=0.0001)
     parser.add_argument('--epochs', type=int, default=5)
+    parser.add_argument('--debug_samples', type=int, default=0)
     args = parser.parse_args()
     print(args)
     
@@ -89,7 +90,9 @@ if __name__ == '__main__':
         evaluator = Evaluator(dataset_name)
         split_edge = dataset.get_edge_split()
         graph = dataset[0]
-        train_pos_edges = split_edge['train']['edge'][:200000]
+        train_pos_edges = split_edge['train']['edge']
+        if args.debug_samples > 0:
+            train_pos_edges = train_pos_edges[:args.debug_samples]
         val_pos_edge, val_neg_edge = split_edge['valid']['edge'], split_edge['valid']['edge_neg']
         test_pos_edge, test_neg_edge = split_edge['test']['edge'], split_edge['test']['edge_neg']
         
@@ -97,8 +100,10 @@ if __name__ == '__main__':
         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         max_z = 10000
         node_feat = graph.x if args.use_feature else None
+        feat_dim = dataset.num_node_features if args.use_feature else args.hidden_channels
+        print(feat_dim)
         base_edges = graph.edge_index.t()
-        seal = SEAL('SAGE', False, args.lr, args.hidden_channels, args.num_layers, max_z, args.dropout)
+        seal = SEAL('SAGE', args.use_feature, args.lr, feat_dim, args.hidden_channels, args.num_layers, max_z, args.dropout)
         train_dataset_dir = dataset.root+'_seal'
         if not args.use_cache:
             shutil.rmtree(train_dataset_dir, ignore_errors=True)
@@ -106,14 +111,25 @@ if __name__ == '__main__':
                         graph.num_nodes, args.num_hops, args.max_nodes_per_hop, node_feat=node_feat)
         seal.train(train_dataset, args.epochs, args.batch_size, device)
 
-        # Test
+        # Valid
         val_dataset_dir = dataset.root+"_seal_val"
         if not args.use_cache:
             shutil.rmtree(val_dataset_dir, ignore_errors=True)
         val_dataset = SEALDataset(val_dataset_dir, base_edges, val_pos_edge,
                                 graph.num_nodes, args.num_hops, args.max_nodes_per_hop,
                                 node_feat=node_feat, neg_edges=val_neg_edge)
+        print("Validation:")
         test(val_dataset, seal, args.batch_size, evaluator)
+
+        # Test
+        test_dataset_dir = dataset.root+"_seal_test"
+        if not args.use_cache:
+            shutil.rmtree(test_dataset_dir, ignore_errors=True)
+        test_dataset = SEALDataset(test_dataset_dir, base_edges, test_pos_edge,
+                                graph.num_nodes, args.num_hops, args.max_nodes_per_hop,
+                                node_feat=node_feat, neg_edges=test_neg_edge)
+        print("Test:")
+        test(test_dataset, seal, args.batch_size, evaluator)
     else:
         dataset_root = '../data/facebook'
         # facebook

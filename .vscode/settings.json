@@ -9,5 +9,6 @@
 	"python.testing.pytestEnabled": false,
 	"python.testing.nosetestsEnabled": false,
 	"python.testing.unittestEnabled": true,
-	"editor.gotoLocation.multipleDefinitions": "goto"
+	"editor.gotoLocation.multipleDefinitions": "goto",
+	"python.pythonPath": "/Users/fanshen/opt/miniconda3/envs/pyg/bin/python3"
 }
