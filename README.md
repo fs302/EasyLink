@@ -3,11 +3,9 @@
 EasyLink is an **Easy-to-use** collection of SOTA Link Prediction models for Networks, especially Social Networks. It is designed to provide tutorials for beginers, pipeline implementation of models and comprehensive guidance for choosing the right model.
 
 ## Requirements
-* Python 3.6.2
-* PyTorch 1.7.1
-* PyTorch_Geometric 1.6.3
-* OGB 1.3.1
-* tqdm 4.36.1
+* PyTorch>=1.13.0
+* PyTorch_Geometric
+* OGB>=1.3.1
 
 ## Models
 | Model               | Paper                                                        | Module |
@@ -19,6 +17,7 @@ EasyLink is an **Easy-to-use** collection of SOTA Link Prediction models for Net
 | Node2Vec            | [KDD2016] [node2vec: Scalable Feature Learning for Networks](https://cs.stanford.edu/~jure/pubs/node2vec-kdd16.pdf) |  [Model](https://github.com/fs302/EasyLink/blob/main/easylink/model/node2vec_link.py) |
 | GraphSage           | [NIPS2017] [Inductive Representation Learning on Large Graphs](http://snap.stanford.edu/graphsage/) |   [Model](https://github.com/fs302/EasyLink/blob/main/easylink/model/graphsage_link.py)     |
 | SEAL                | [NIPS2018] [Link prediction based on graph neural networks](https://arxiv.org/abs/1802.09691) |   [Model](https://github.com/fs302/EasyLink/blob/main/easylink/model/seal.py)  /[Example](https://github.com/fs302/EasyLink/blob/main/easylink/example/seal_pipe.py) |
+| NBFNet                | [NIPS2021] [Neural Bellman-Ford Networks: A General Graph Neural Network Framework for Link Prediction](https://arxiv.org/abs/2106.06935) |   [Model](https://github.com/fs302/EasyLink/blob/main/easylink/model/nbfnet.py)  /[Example](https://github.com/fs302/EasyLink/blob/main/easylink/example/nbfnet_pipe.py) |
 
 
 ## DataSets
