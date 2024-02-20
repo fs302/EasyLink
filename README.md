@@ -30,3 +30,4 @@ EasyLink is an **Easy-to-use** collection of SOTA Link Prediction models for Net
 | Arxiv       | collaboration network generated from arXiv                   | 18,722 nodes and 198,110 edges                       |-|-|
 | twitter     | social circles from Twitter                                  | 81,306 nodes and 1,342,310 edges                     |-|-|
 | MAG-collab  | subset of the collaboration network between authors from MAG | 235,868	nodes and 1,285,465 edges	            | Yes |-|
+| CORA  | subset of the paper citation network of machine learning | 1433	nodes and 2708 edges	            | Yes |-|

@@ -167,7 +167,7 @@ if __name__ == '__main__':
             # Training
             device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
             max_z = 1000
-            seal = SEAL('SAGE', False, args.lr, args.hidden_channels, args.num_layers, max_z, args.dropout)
+            seal = SEAL('SAGE', False, args.lr, 0, args.hidden_channels, args.num_layers, max_z, args.dropout)
             train_dataset_dir = dataset_root+'_seal'
             if not args.use_cache:
                 shutil.rmtree(train_dataset_dir, ignore_errors=True)

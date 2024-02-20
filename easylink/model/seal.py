@@ -36,8 +36,8 @@ class SEAL():
         if gnn == 'SAGE':
             self.model = SAGE(input_channels, hidden_channels, num_layers, max_z, dropout)
         parameters = list(self.model.parameters())
-        total_params = sum(p.numel() for param in parameters for p in param)
-        print(f'Total number of parameters is {total_params}')
+        # total_params = sum(p.numel() for param in parameters for p in param)
+        # print(f'Total number of parameters is {total_params}')
         self.optimizer = torch.optim.Adam(params=parameters, lr=learning_rate)
 
     def train(self, train_dataset, epochs, batch_size, device):
