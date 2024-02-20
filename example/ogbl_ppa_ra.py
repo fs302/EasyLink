@@ -51,7 +51,7 @@ def evaluate_hits(evaluator, pos_val_pred, neg_val_pred, pos_test_pred, neg_test
 def main():
     # Data settings
     print("Loading data.")
-    dataset_name = 'ogbl_ppa'
+    dataset_name = 'ogbl-ppa'
     dataset = PygLinkPropPredDataset(name=dataset_name)
     evaluator = Evaluator(name=dataset_name)
     data = dataset[0]
