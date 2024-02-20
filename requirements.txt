@@ -1,8 +1,16 @@
-torch
-torch-scatter
-torch-sparse
-torch-spline-conv
+torch==1.13.0
 torchvision
-tqdm
 torch-geometric
+tqdm
 ogb
+networkx
+pytest
+# torch-scatter
+# torch-sparse
+# torch-spline-conv
+git+https://github.com/rusty1s/pytorch_scatter.git
+git+https://github.com/rusty1s/pytorch_sparse.git
+git+https://github.com/rusty1s/pytorch_cluster.git
+torchdrug
+pyyaml
+easydict

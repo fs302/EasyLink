@@ -37,7 +37,7 @@ def train_test_split(nx_adj, test_frac=.2, val_frac=.1, pos_neg_ratio=.5):
     nx_adj = nx_adj - ss.dia_matrix((nx_adj.diagonal()[np.newaxis, :], [0]), shape=nx_adj.shape)
     nx_adj.eliminate_zeros()
 
-    g = nx.from_scipy_sparse_matrix(nx_adj)
+    g = nx.from_scipy_sparse_array(nx_adj)
 
     adj_triu = ss.triu(nx_adj)
     edges, weights, adj_shape = sparse_to_tuple(adj_triu)
