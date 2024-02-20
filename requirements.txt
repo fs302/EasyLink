@@ -5,12 +5,12 @@ tqdm
 ogb
 networkx
 pytest
-# torch-scatter
-# torch-sparse
-# torch-spline-conv
-git+https://github.com/rusty1s/pytorch_scatter.git
-git+https://github.com/rusty1s/pytorch_sparse.git
-git+https://github.com/rusty1s/pytorch_cluster.git
 torchdrug
 pyyaml
 easydict
+git+https://github.com/rusty1s/pytorch_scatter.git
+git+https://github.com/rusty1s/pytorch_sparse.git
+git+https://github.com/rusty1s/pytorch_cluster.git
+# torch-scatter
+# torch-sparse
+# torch-spline-conv
