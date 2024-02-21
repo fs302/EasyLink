@@ -30,3 +30,17 @@ EasyLink is an **Easy-to-use** collection of SOTA Link Prediction models for Net
 | twitter     | social circles from Twitter                                  | 81,306 nodes and 1,342,310 edges                     |-|-|
 | MAG-collab  | subset of the collaboration network between authors from MAG | 235,868	nodes and 1,285,465 edges	            | Yes |-|
 | CORA  | subset of the paper citation network of machine learning | 1433	nodes and 2708 edges	            | Yes |-|
+
+## RoadMap
+
+- [x] Build classic heuristic link prediction methods: Common Neighbors, Adamic-Adar, Resource Allocation
+- [x] Build basic graph neural network models: Node2Vec, GraphSage
+- [x] Build advanced graph neural network models: SEAL, NBFNet
+- [x] Demonstrate examples for each model
+- [x] Import classic link prediction datasets: USAir, Facebook, Arxiv, twitter
+- [ ] Develop a universal pipeline for link prediction
+- [ ] Optimize computational efficiency
+- [ ] Host 1~3 leaderboards on diverse datasets with link prediction models
+- [ ] Launch a tutorial website with complimentary documentation
+- [ ] Support a easy-to-use python package
+- [ ] Explore an automatic pipeline for link prediction
